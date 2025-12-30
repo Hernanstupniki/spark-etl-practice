@@ -23,4 +23,3 @@ print("=== ESTADÍSTICAS ===")
 df.describe("rental_rate", "length").show()
 
 spark.stop()
-s
