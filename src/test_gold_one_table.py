@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import count, avg, min, max, row_number, desc, when, col, stddev, expr
+from pyspark.sql.functions import count, avg, min, max, row_number, desc, when, col, stddev, expr, dense_rank
 from pyspark.sql.window import Window
 
 spark = SparkSession.builder \
@@ -93,7 +93,12 @@ df_length_segmentation = (
     .otherwise("long"))
     )
 
+# Analitic rankings
+window_ranking = Window.orderBy(desc("films"))
 
-df_length_segmentation.select("film_id", "title", "length_segment").show(200, truncate = False)
+df_rankings = (
+    df_silver_clean
+    .groupBy("length").agg(count("*").alias("films")).withColumn("rank", dense_rank().over(window_ranking)).orderBy(desc("films"))
+)
 
 df_gold_metrics.write.mode("overwrite").parquet("data/gold/film_metrics")
