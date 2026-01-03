@@ -1,49 +1,55 @@
 import os
 from pyspark.sql import SparkSession
 
-# CONFIG JDBC (ENV VARS)
 POSTGRES_JAR = os.getenv("POSTGRES_JAR")
 JDBC_URL = os.getenv("JDBC_URL")
 USER = os.getenv("DB_USER")
 PASSWORD = os.getenv("DB_PASSWORD")
-TABLE = "film"
 
-# Basic validation
 if not all([POSTGRES_JAR, JDBC_URL, USER, PASSWORD]):
     raise RuntimeError("Missing environment variables for JDBC connection")
 
-# SPARK SESSION
+QUERY = """
+(
+    SELECT
+        film_id,
+        title,
+        release_year,
+        language_id,
+        rental_rate,
+        length,
+        rating
+    FROM film
+) AS src
+"""
+
 spark = (
     SparkSession.builder
-    .appName("test_bronze_one_table")
+    .appName("bronze_film_full_sql_extract")
     .master("local[*]")
     .config("spark.jars", POSTGRES_JAR)
     .getOrCreate()
 )
 
-# READ JDBC (BRONZE)
 df = (
     spark.read
     .format("jdbc")
     .option("url", JDBC_URL)
-    .option("dbtable", TABLE)
+    .option("dbtable", QUERY)
     .option("user", USER)
     .option("password", PASSWORD)
     .option("driver", "org.postgresql.Driver")
     .load()
 )
 
-print(f"✅ Conectó y leyó la tabla: {TABLE}")
-print("Filas:", df.count())
+print("Conected")
+print("Rows:", df.count())
 df.printSchema()
-df.select("title").show(truncate=False)
 
-# WRITE BRONZE (PARQUET)
-output_path = f"data/bronze/{TABLE}"
+output_path = "data/bronze/film"
 
 df.write.mode("overwrite").parquet(output_path)
 
-print("✅ Guardado en:", output_path)
+print("Saved in:", output_path)
 
-# CLOSE
 spark.stop()

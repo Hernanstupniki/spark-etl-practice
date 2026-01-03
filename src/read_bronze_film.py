@@ -7,10 +7,10 @@ spark = SparkSession.builder \
 
 df = spark.read.parquet("data/bronze/film")
 
-print("=== ESQUEMA ===")
+print("=== SCHEMA ===")
 df.printSchema()
 
-print("=== MUESTRA ===")
+print("=== SAMPLE ===")
 df.select(
     "film_id",
     "title",
@@ -19,7 +19,7 @@ df.select(
     "rental_rate"
 ).show(10, truncate=False)
 
-print("=== ESTADÍSTICAS ===")
+print("=== STADISTICS ===")
 df.describe("rental_rate", "length").show()
 
 spark.stop()
