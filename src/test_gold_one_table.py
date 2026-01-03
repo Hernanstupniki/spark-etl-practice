@@ -3,7 +3,7 @@ from pyspark.sql.functions import count, avg, min, max, row_number, desc, when, 
 from pyspark.sql.window import Window
 
 spark = SparkSession.builder \
-    .appName("test_silver_one_table") \
+    .appName("test_gold_one_table") \
     .master("local[*]") \
     .getOrCreate()
 
@@ -100,5 +100,9 @@ df_rankings = (
     df_silver_clean
     .groupBy("length").agg(count("*").alias("films")).withColumn("rank", dense_rank().over(window_ranking)).orderBy(desc("films"))
 )
+
+df_rankings.show()
+
+#df_length_segmentation.select("film_id", "title", "length_segment").show(200, truncate = False)
 
 df_gold_metrics.write.mode("overwrite").parquet("data/gold/film_metrics")
