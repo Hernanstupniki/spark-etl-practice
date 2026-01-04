@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import count, avg, min, max, row_number, desc, when, col, stddev, expr, dense_rank
+from pyspark.sql.functions import count, avg, min, max, row_number, desc, when, col, stddev, expr, dense_rank, abs, round, sum as sum_
 from pyspark.sql.window import Window
 
 spark = SparkSession.builder \
@@ -21,6 +21,31 @@ df_gold_metrics = df_silver_clean.agg(
     max("length").alias("max_length")
     )
 
+# Rating metrics
+df_ratings_metrics = (
+    df_silver_clean.agg(
+        count("*").alias("total_ratings")
+    )
+)
+# Most frequent rating
+df_rating_count = (
+    df_silver_clean
+    .groupBy("rating")
+    .agg(
+        count("*").alias("rating_count"),
+        )
+)
+
+window_rating_mode = Window.orderBy(desc("rating_count"))
+
+df_gold_rating_mode = (
+    df_rating_count
+    .withColumn("rn", row_number().over(window_rating_mode))
+    .filter("rn = 1")
+    .select("rating", "rating_count")
+)
+
+
 # Film metrics by rating
 df_gold_by_rating = df_silver_clean.groupBy("rating").agg(
     count("*").alias("films_per_ratings"),
@@ -31,6 +56,7 @@ df_gold_by_rating = df_silver_clean.groupBy("rating").agg(
 # Film metrics by length
 df_gold_by_lenght = df_silver_clean.groupBy("length").agg(
     count("*").alias("films_per_lenght"),
+    expr("collect_list(rental_rate)").alias("list_rental_rate"),
     avg("rental_rate").alias("avg_rental_rate"),
 )
 
@@ -59,9 +85,8 @@ df_mode_reliability = (
         ("has_real_mode"),
         when(col("rating_count") > 1, True).otherwise(False)
     )
-    .select("length", "rating", "rating_count", "has_real_mode")
+    .select("length", col("rating").alias("mode_rating"), col("rating_count").alias("mode_frequency"), "has_real_mode")
     )
-
 
 # standar deviation
 df_standard_deviation = df_silver_clean.agg(
@@ -96,13 +121,74 @@ df_length_segmentation = (
 # Analitic rankings
 window_ranking = Window.orderBy(desc("films"))
 
-df_rankings = (
+# Ranking more films per length
+df_rankings_more_films_per_length = (
     df_silver_clean
-    .groupBy("length").agg(count("*").alias("films")).withColumn("rank", dense_rank().over(window_ranking)).orderBy(desc("films"))
+    .groupBy("length").agg(count("*").alias("films"))
+    .withColumn("rank", dense_rank().over(window_ranking)).orderBy(desc("films"))
 )
 
-df_rankings.show()
+# Ranking more films per ratings
+df_rankings_more_films_per_ratings = (
+    df_silver_clean
+    .groupBy("rating").agg(count("*").alias("films"))
+    .withColumn("rank", dense_rank().over(window_ranking)).orderBy(desc("films"))
+)
 
-#df_length_segmentation.select("film_id", "title", "length_segment").show(200, truncate = False)
+# Stats for outliers
+stats = (
+    df_silver_clean.agg(
+        avg("length").alias("avg_length"),
+        stddev("length").alias("stddev_length")
+        )
+).collect()[0]
+
+avg_length = stats["avg_length"]
+stddev_length = stats["stddev_length"]
+
+# outliers
+df_outliers_length = (
+    df_silver_clean
+    .withColumn(
+        "is_length_outlier",
+        when(
+            abs(col("length") - avg_length) > 2 * stddev_length,
+            True
+        ).otherwise(False)
+    )
+)
+
+# Coverage metrics ratings
+df_count_per_rating = (
+    df_silver_clean
+    .groupBy("rating")
+    .agg(count("*").alias("count_rating"))
+)
+
+window_total = Window.partitionBy()
+
+df_coverage_metrics_ratings_percentage = (
+    df_count_per_rating
+    .withColumn(
+        "coverage_percentage",
+        round((col("count_rating") / sum_("count_rating").over(window_total)) * 100, 2)
+    ).orderBy(desc("coverage_percentage"))
+)
+
+# Coverage metrics length df_length_segmentation
+df_count_per_length = (
+    df_length_segmentation
+    .groupBy("length_segment")
+    .agg(count("*").alias("count_length_segment"))
+)
+
+df_coverage_metrics_length_percentage = (
+    df_count_per_length
+    .withColumn(
+        "coverage_percentage",
+        round((col("count_length_segment") / sum_("count_length_segment").over(window_total)) * 100, 2)
+    ).orderBy(desc("coverage_percentage"))
+)
+
 
 df_gold_metrics.write.mode("overwrite").parquet("data/gold/film_metrics")
