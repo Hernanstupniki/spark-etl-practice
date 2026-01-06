@@ -6,40 +6,39 @@ Source: Gold aggregations, quality, coverage, rankings
 """
 
 import os
+import logging
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import lit, current_timestamp
+from pyspark.sql.functions import lit, current_timestamp, col
 
-# --------------------------------------------------
-# Environment
-# --------------------------------------------------
+# Logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Environment configuration
 ENV = os.getenv("ENV", "dev")
 BASE_PATH = f"data/{ENV}"
 
-# --------------------------------------------------
-# Spark
-# --------------------------------------------------
+logger.info(f"Starting Gold Mart: film_overview | ENV={ENV}")
+
+# Spark session
 spark = (
     SparkSession.builder
     .appName("gold_mart_film_overview")
     .getOrCreate()
 )
 
-# --------------------------------------------------
-# Constants
-# --------------------------------------------------
+# Metadata columns inherited from gold datasets
 METADATA_COLS = ["job_name", "job_version", "execution_ts"]
 
-# --------------------------------------------------
-# Read Gold datasets
-# --------------------------------------------------
+# Read gold aggregations
+logger.info("Reading gold datasets")
 
-# Base aggregations
 df_film_metrics_by_rating = (
     spark.read.parquet(f"{BASE_PATH}/gold/analytics/aggregations/films_by_rating")
     .drop(*METADATA_COLS)
 )
 
-# Quality flags
+# Read quality datasets
 df_quality_low_data = (
     spark.read.parquet(f"{BASE_PATH}/gold/analytics/quality/low_data_by_rating")
     .drop(*METADATA_COLS)
@@ -50,33 +49,31 @@ df_quality_stability = (
     .select("rating", "stable_result_flag")
 )
 
-# Coverage
+# Read coverage dataset
 df_coverage_ratings = (
     spark.read.parquet(f"{BASE_PATH}/gold/analytics/coverage/ratings")
     .select("rating", "coverage_percentage")
 )
 
-# Rankings
+# Read rankings dataset
 df_rankings = (
     spark.read.parquet(f"{BASE_PATH}/gold/analytics/rankings/films_per_rating")
     .select("rating", "rank")
 )
 
-# --------------------------------------------------
-# Derived flags
-# --------------------------------------------------
+# Derive dominance flag based on coverage threshold
+logger.info("Deriving dominance flag")
 
 df_dominance = (
     df_coverage_ratings
     .withColumn(
         "dominant_category_flag",
-        df_coverage_ratings.coverage_percentage >= 40
+        col("coverage_percentage") >= 40
     )
 )
 
-# --------------------------------------------------
-# Build mart
-# --------------------------------------------------
+# Build final mart by joining all gold datasets
+logger.info("Building film_overview mart")
 
 df_gold_film_overview = (
     df_film_metrics_by_rating
@@ -91,10 +88,11 @@ df_gold_film_overview = (
     )
 )
 
-# --------------------------------------------------
-# Add mart metadata (single metadata layer)
-# --------------------------------------------------
+# Log number of rows produced
+rows = df_gold_film_overview.count()
+logger.info(f"Rows generated for mart: {rows}")
 
+# Add mart-level metadata (single metadata layer)
 df_gold_film_overview = (
     df_gold_film_overview
     .withColumn("job_name", lit("gold_mart_film_overview"))
@@ -102,11 +100,24 @@ df_gold_film_overview = (
     .withColumn("execution_ts", current_timestamp())
 )
 
-# --------------------------------------------------
-# Write mart
-# --------------------------------------------------
+# Data quality check: business key must not be null
+nulls = df_gold_film_overview.filter(col("rating").isNull()).count()
 
-df_gold_film_overview.write.mode("overwrite") \
-    .parquet(f"{BASE_PATH}/gold/analytics/marts/film_overview")
+if nulls > 0:
+    logger.error("Data quality check failed: NULL ratings found")
+    raise Exception("Null ratings found in mart")
 
+logger.info("Data quality checks passed")
+
+# Write mart to gold layer
+output_path = f"{BASE_PATH}/gold/analytics/marts/film_overview"
+
+logger.info(f"Writing mart to {output_path}")
+
+df_gold_film_overview.write.mode("overwrite").parquet(output_path)
+
+logger.info("Gold mart film_overview written successfully")
+
+# Stop Spark session
 spark.stop()
+logger.info("Spark session stopped")

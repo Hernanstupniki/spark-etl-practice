@@ -38,6 +38,10 @@ df_film_metrics_by_rating = add_metadata(
     "gold_film_metrics_by_rating"
 )
 
+# Any data
+if df_film_metrics_by_rating.count() == 0:
+    raise Exception("Gold aggregations returned no rows")
+
 # Aggregation by length
 df_film_metrics_by_length = add_metadata(
     df_silver_clean
@@ -49,6 +53,7 @@ df_film_metrics_by_length = add_metadata(
     ),
     "gold_film_metrics_by_length"
 )
+
 
 df_film_metrics_by_rating.write.mode("overwrite") \
     .parquet(f"{BASE_PATH}/gold/analytics/aggregations/films_by_rating")
