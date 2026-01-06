@@ -4,18 +4,20 @@ Purpose: Data quality and reliability indicators
 Grain: Varies by control
 Source: Silver film clean
 """
-
+import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import count, avg, stddev, when, col, desc, lit, current_timestamp, row_number
 from pyspark.sql.window import Window
 
+ENV = os.getenv("ENV", "dev")
+BASE_PATH = f"data/{ENV}"
+
 spark = SparkSession.builder.appName("gold_quality_film").getOrCreate()
 
 df_silver_clean = (
-    spark.read.parquet("data/silver/film")
+    spark.read.parquet(f"{BASE_PATH}/silver/film")
     .filter("has_quality_issues = false")
 )
-
 def add_metadata(df, job_name, job_version="v1"):
     return (
         df
@@ -81,10 +83,10 @@ df_quality_mode_reliability_by_length = add_metadata(
 )
 
 df_quality_low_data_by_rating.write.mode("overwrite") \
-    .parquet("data/gold/quality/low_data_by_rating")
+    .parquet(f"{BASE_PATH}/gold/analytics/quality/low_data_by_rating")
 
 df_quality_stability_by_rating.write.mode("overwrite") \
-    .parquet("data/gold/quality/stability_by_rating")
+    .parquet(f"{BASE_PATH}/gold/analytics/quality/stability_by_rating")
 
 df_quality_mode_reliability_by_length.write.mode("overwrite") \
-    .parquet("data/gold/quality/mode_reliability_by_length")
+    .parquet(f"{BASE_PATH}/gold/analytics/quality/mode_reliability_by_length")

@@ -9,6 +9,9 @@ PASSWORD = os.getenv("DB_PASSWORD")
 if not all([POSTGRES_JAR, JDBC_URL, USER, PASSWORD]):
     raise RuntimeError("Missing environment variables for JDBC connection")
 
+ENV = os.getenv("ENV", "dev")
+BASE_PATH = f"data/{ENV}"
+
 QUERY = """
 (
     SELECT
@@ -46,7 +49,7 @@ print("Conected")
 print("Rows:", df.count())
 df.printSchema()
 
-output_path = "data/bronze/film"
+output_path = f"{BASE_PATH}/bronze/film"
 
 df.write.mode("overwrite").parquet(output_path)
 

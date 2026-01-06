@@ -4,14 +4,17 @@ Purpose: Global KPIs for BI cards
 Grain: Single row
 Source: Silver film clean
 """
-
+import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import count, avg, min, max, lit, current_timestamp
+
+ENV = os.getenv("ENV", "dev")
+BASE_PATH = f"data/{ENV}"
 
 spark = SparkSession.builder.appName("gold_metrics_film").getOrCreate()
 
 df_silver_clean = (
-    spark.read.parquet("data/silver/film")
+    spark.read.parquet(f"{BASE_PATH}/silver/film")
     .filter("has_quality_issues = false")
 )
 
@@ -44,7 +47,7 @@ df_rental_rate_metrics = add_metadata(
 )
 
 df_length_metrics.write.mode("overwrite") \
-    .parquet("data/gold/metrics/film_length")
+    .parquet(f"{BASE_PATH}/gold/analytics/metrics/film_length")
 
 df_rental_rate_metrics.write.mode("overwrite") \
-    .parquet("data/gold/metrics/rental_rate")
+    .parquet(f"{BASE_PATH}/gold/analytics/metrics/rental_rate")

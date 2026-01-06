@@ -1,3 +1,4 @@
+import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import trim, upper, current_timestamp, lit, when
 
@@ -6,7 +7,10 @@ spark = SparkSession.builder \
     .master("local[*]") \
     .getOrCreate()
 
-df_silver = spark.read.parquet("data/bronze/film")
+ENV = os.getenv("ENV", "dev")
+BASE_PATH = f"data/{ENV}"
+
+df_silver = spark.read.parquet(f"{BASE_PATH}/bronze/film")
 
 df_silver = df_silver.select("film_id", "title", "release_year", "rating", "rental_rate", "length")
 
@@ -86,7 +90,7 @@ df_silver = df_silver.withColumn(
 
 df_silver.printSchema()
 
-df_silver.write.mode("overwrite").parquet("data/silver/film")
+df_silver.write.mode("overwrite").parquet(f"{BASE_PATH}/silver/film")
 
 spark.stop()
 

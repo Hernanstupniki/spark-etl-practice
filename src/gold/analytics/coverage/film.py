@@ -4,18 +4,20 @@ Purpose: Distribution percentages by category
 Grain: One row per category
 Source: Silver film clean
 """
-
+import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import count, round, sum as sum_, col, when, desc, lit, current_timestamp
 from pyspark.sql.window import Window
 
 spark = SparkSession.builder.appName("gold_coverage_film").getOrCreate()
 
+ENV = os.getenv("ENV", "dev")
+BASE_PATH = f"data/{ENV}"
+
 df_silver_clean = (
-    spark.read.parquet("data/silver/film")
+    spark.read.parquet(f"{BASE_PATH}/silver/film")
     .filter("has_quality_issues = false")
 )
-
 def add_metadata(df, job_name, job_version="v1"):
     return (
         df
@@ -69,7 +71,7 @@ df_coverage_length_segments = add_metadata(
 )
 
 df_coverage_ratings.write.mode("overwrite") \
-    .parquet("data/gold/coverage/ratings")
+    .parquet(f"{BASE_PATH}/gold/analytics/coverage/ratings")
 
 df_coverage_length_segments.write.mode("overwrite") \
-    .parquet("data/gold/coverage/length_segments")
+    .parquet(f"{BASE_PATH}/gold/analytics/coverage/length_segments")

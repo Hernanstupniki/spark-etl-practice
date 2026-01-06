@@ -4,14 +4,17 @@ Purpose: Metrics grouped by business dimensions
 Grain: One row per dimension value
 Source: Silver film clean
 """
-
+import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import count, avg, expr, lit, current_timestamp
 
 spark = SparkSession.builder.appName("gold_aggregations_film").getOrCreate()
 
+ENV = os.getenv("ENV", "dev")
+BASE_PATH = f"data/{ENV}"
+
 df_silver_clean = (
-    spark.read.parquet("data/silver/film")
+    spark.read.parquet(f"{BASE_PATH}/silver/film")
     .filter("has_quality_issues = false")
 )
 
@@ -48,7 +51,7 @@ df_film_metrics_by_length = add_metadata(
 )
 
 df_film_metrics_by_rating.write.mode("overwrite") \
-    .parquet("data/gold/aggregations/films_by_rating")
+    .parquet(f"{BASE_PATH}/gold/analytics/aggregations/films_by_rating")
 
 df_film_metrics_by_length.write.mode("overwrite") \
-    .parquet("data/gold/aggregations/films_by_length")
+    .parquet(f"{BASE_PATH}/gold/analytics/aggregations/films_by_length")

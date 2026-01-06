@@ -4,15 +4,19 @@ Purpose: Derived analytical insights
 Grain: Varies (global / per segment)
 Source: Silver film clean
 """
-
+import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import count, row_number, desc, expr, lit, current_timestamp
 from pyspark.sql.window import Window
 
+ENV = os.getenv("ENV", "dev")
+BASE_PATH = f"data/{ENV}"
+
+
 spark = SparkSession.builder.appName("gold_insights_film").getOrCreate()
 
 df_silver_clean = (
-    spark.read.parquet("data/silver/film")
+    spark.read.parquet(f"{BASE_PATH}/silver/film")
     .filter("has_quality_issues = false")
 )
 
@@ -72,7 +76,7 @@ df_rental_rate_percentiles = add_metadata(
     "gold_rental_rate_percentiles"
 )
 
-df_most_rating_mode.write.mode("overwrite").parquet("data/gold/insights/global_rating_mode")
-df_rating_mode_by_length.write.mode("overwrite").parquet("data/gold/insights/rating_mode_by_length")
-df_length_percentiles.write.mode("overwrite").parquet("data/gold/insights/length_percentiles")
-df_rental_rate_percentiles.write.mode("overwrite").parquet("data/gold/insights/rental_rate_percentiles")
+df_most_rating_mode.write.mode("overwrite").parquet(f"{BASE_PATH}/gold/analytics/insights/global_rating_mode")
+df_rating_mode_by_length.write.mode("overwrite").parquet(f"{BASE_PATH}/gold/analytics/insights/rating_mode_by_length")
+df_length_percentiles.write.mode("overwrite").parquet(f"{BASE_PATH}/gold/analytics/insights/length_percentiles")
+df_rental_rate_percentiles.write.mode("overwrite").parquet(f"{BASE_PATH}/gold/analytics/insights/rental_rate_percentiles")
