@@ -11,6 +11,8 @@ from pyspark.sql.window import Window
 
 spark = SparkSession.builder.appName("gold_coverage_film").getOrCreate()
 
+spark.sparkContext.setLogLevel("WARN")
+
 ENV = os.getenv("ENV", "dev")
 BASE_PATH = f"data/{ENV}"
 

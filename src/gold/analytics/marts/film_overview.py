@@ -27,6 +27,8 @@ spark = (
     .getOrCreate()
 )
 
+spark.sparkContext.setLogLevel("WARN")
+
 # Metadata columns inherited from gold datasets
 METADATA_COLS = ["job_name", "job_version", "execution_ts"]
 

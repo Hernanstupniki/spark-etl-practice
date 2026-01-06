@@ -12,8 +12,9 @@ from pyspark.sql.window import Window
 ENV = os.getenv("ENV", "dev")
 BASE_PATH = f"data/{ENV}"
 
-
 spark = SparkSession.builder.appName("gold_insights_film").getOrCreate()
+
+spark.sparkContext.setLogLevel("WARN")
 
 df_silver_clean = (
     spark.read.parquet(f"{BASE_PATH}/silver/film")

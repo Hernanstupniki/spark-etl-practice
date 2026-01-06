@@ -9,6 +9,14 @@ spark = SparkSession.builder \
 ENV = os.getenv("ENV", "dev")
 BASE_PATH = f"data/{ENV}"
 
+spark = (
+    SparkSession.builder
+    .appName("gold_dim_rating")
+    .getOrCreate()
+)
+
+spark.sparkContext.setLogLevel("WARN")
+
 df_silver_clean = (
     spark.read.parquet(f"{BASE_PATH}/silver/film")
     .filter("has_quality_issues = false")

@@ -9,6 +9,13 @@ spark = SparkSession.builder \
     .master("local[*]") \
     .getOrCreate()
 
+spark = (
+    SparkSession.builder
+    .appName("gold_dim_rating")
+    .getOrCreate()
+)
+
+spark.sparkContext.setLogLevel("WARN")
 
 df_silver_clean = (
     spark.read.parquet(f"{BASE_PATH}/silver/film")

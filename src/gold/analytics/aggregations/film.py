@@ -10,6 +10,8 @@ from pyspark.sql.functions import count, avg, expr, lit, current_timestamp
 
 spark = SparkSession.builder.appName("gold_aggregations_film").getOrCreate()
 
+spark.sparkContext.setLogLevel("WARN")
+
 ENV = os.getenv("ENV", "dev")
 BASE_PATH = f"data/{ENV}"
 
