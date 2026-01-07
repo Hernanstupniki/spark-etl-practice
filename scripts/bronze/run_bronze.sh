@@ -31,9 +31,7 @@ fi
 echo "ENV: $ENV"
 echo "Postgres JAR: $POSTGRES_JAR"
 
-# -------------------------------
 # Run Spark job
-# -------------------------------
 spark-submit \
   --master local[*] \
   --jars "$POSTGRES_JAR" \
