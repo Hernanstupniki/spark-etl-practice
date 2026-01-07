@@ -30,6 +30,6 @@ df_fact_film = (
 )
 
 df_fact_film.write.mode("overwrite") \
-    .partitionBy("rating") \
+    .mode("overwrite") \
     .parquet(f"{BASE_PATH}/gold/star/fact_film")
 
