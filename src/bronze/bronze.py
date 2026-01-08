@@ -34,6 +34,8 @@ spark = (
     .getOrCreate()
 )
 
+spark.sparkContext.setLogLevel("WARN")
+
 df = (
     spark.read
     .format("jdbc")

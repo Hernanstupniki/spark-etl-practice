@@ -7,6 +7,8 @@ spark = SparkSession.builder \
     .master("local[*]") \
     .getOrCreate()
 
+spark.sparkContext.setLogLevel("WARN")
+
 ENV = os.getenv("ENV", "dev")
 BASE_PATH = f"data/{ENV}"
 
